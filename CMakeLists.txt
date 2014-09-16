@@ -47,11 +47,13 @@ endif (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 # if (WIN32)
 #   add_definitions (-DWIN32)
 # endif (WIN32)
-# 
-# if (CMAKE_SYSTEM_NAME MATCHES Linux)
-#   add_definitions (-DLINUX)
-# endif (CMAKE_SYSTEM_NAME MATCHES Linux)
-# 
+ 
+if (CMAKE_SYSTEM_NAME MATCHES Linux)
+  add_definitions (-DLINUX)
+  include_directories (/usr/include/eigen3)
+  list(APPEND CMAKE_REQUIRED_INCLUDES /usr/include/eigen3)
+endif (CMAKE_SYSTEM_NAME MATCHES Linux)
+ 
 if (APPLE)
   add_definitions (-DOSX)
   include_directories (
@@ -99,5 +101,3 @@ target_link_libraries (pp2d ${GTK2_LIBRARIES})
 
 add_executable (pprrr2d pprrr2d.cpp gfx.cpp)
 target_link_libraries (pprrr2d ${GTK2_LIBRARIES})
-
-add_executable (conjgrad conjgrad.cpp)
