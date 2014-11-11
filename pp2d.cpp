@@ -87,7 +87,7 @@ enum { PAUSE, STEP, RUN } state;
 struct handle_s {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   
-  handle_s (double radius, double red, double green, double blue, double alpha)
+  handle_s (double px, double py, double radius, double red, double green, double blue, double alpha)
     : point_(2),
       radius_(radius),
       red_(red),
@@ -95,15 +95,17 @@ struct handle_s {
       blue_(blue),
       alpha_(alpha)
   {
+    point_ << px, py;
   }
   
   Vector point_;
   double radius_, red_, green_, blue_, alpha_;
 };
 
-static handle_s repulsor (1.5, 0.0, 0.0, 1.0, 0.2);
+static handle_s rep1 (3.0, 0.0,   2.0, 0.0, 0.0, 1.0, 0.2);
+static handle_s rep2 (0.0, 3.0,   2.0, 0.0, 0.5, 1.0, 0.2);
 
-static handle_s * handle[] = { &repulsor, 0 };
+static handle_s * handle[] = { &rep1, &rep2, 0 };
 static handle_s * grabbed (0);
 static Vector grab_offset (3);
 
@@ -174,15 +176,13 @@ static void init_chomp ()
 {
   qs.resize (cdim);
   qs << -5.0, -5.0;
-  xi = Vector::Zero (xidim);
   qe.resize (cdim);
   qe << 7.0, 7.0;
   
-  repulsor.point_ << 3.0, 0.0;
-  
-  // cout << "qs\n" << qs
-  //      << "\nxi\n" << xi
-  //      << "\nqe\n" << qe << "\n\n";
+  xi = Vector::Zero (xidim);
+  for (size_t ii (0); ii < nq; ++ii) {
+    xi.block (cdim * ii, 0, cdim, 1) = qs;
+  }
   
   AA = Matrix::Zero (xidim, xidim);
   for (size_t ii(0); ii < nq; ++ii) {
@@ -249,6 +249,9 @@ static void cb_idle ()
   //////////////////////////////////////////////////
   // beginning of "the" CHOMP iteration
   
+  // static size_t stepcounter (0);
+  // cout << "step " << stepcounter++ << "\n";
+  
   Vector nabla_smooth (AA * xi + bb);
   Vector const & xidd (nabla_smooth); // indeed, it is the same in this formulation...
   
@@ -256,11 +259,14 @@ static void cb_idle ()
   for (size_t iq (0); iq < nq; ++iq) {
     Vector const qq (xi.block (iq * cdim, 0, cdim, 1));
     Vector qd;
-    if (iq == nq - 1) {
-      qd = qe - xi.block (iq * cdim, 0, cdim, 1);
+    if (0 == iq) {
+      qd = 0.5 * (xi.block ((iq+1) * cdim, 0, cdim, 1) - qs);
+    }
+    else if (iq == nq - 1) {
+      qd = 0.5 * (qe - xi.block ((iq-1) * cdim, 0, cdim, 1));
     }
     else {
-      qd = xi.block ((iq+1) * cdim, 0, cdim, 1) - xi.block (iq * cdim, 0, cdim, 1);
+      qd = 0.5 * (xi.block ((iq+1) * cdim, 0, cdim, 1) - xi.block ((iq-1) * cdim, 0, cdim, 1));;
     }
     
     // In this case, C and W are the same, Jacobian is identity.  We
@@ -279,16 +285,18 @@ static void cb_idle ()
     Vector const xdd (JJ * xidd.block (iq * cdim, 0, cdim , 1));
     Matrix const prj (Matrix::Identity (2, 2) - xdn * xdn.transpose()); // hardcoded planar case
     Vector const kappa (prj * xdd / pow (vel, 2.0));
-    Vector delta (xx - repulsor.point_);
-    double const dist (delta.norm());
-    static double const maxdist (4.0); // hardcoded param
-    if ((dist >= maxdist) || (dist < 1e-9)) {
-      continue;
+
+    for (handle_s ** hh (handle); *hh != 0; ++hh) {
+      Vector delta (xx - (*hh)->point_);
+      double const dist (delta.norm());
+      if ((dist >= (*hh)->radius_) || (dist < 1e-9)) {
+	continue;
+      }
+      static double const gain (10.0); // hardcoded param
+      double const cost (gain * (*hh)->radius_ * pow (1.0 - dist / (*hh)->radius_, 3.0) / 3.0); // hardcoded param
+      delta *= - gain * pow (1.0 - dist / (*hh)->radius_, 2.0) / dist; // hardcoded param
+      nabla_obs.block (iq * cdim, 0, cdim, 1) += JJ.transpose() * vel * (prj * delta - cost * kappa);
     }
-    static double const gain (10.0); // hardcoded param
-    double const cost (gain * maxdist * pow (1.0 - dist / maxdist, 3.0) / 3.0); // hardcoded param
-    delta *= - gain * pow (1.0 - dist / maxdist, 2.0) / dist; // hardcoded param
-    nabla_obs.block (iq * cdim, 0, cdim, 1) += JJ.transpose() * vel * (prj * delta - cost * kappa);
   }
   
   Vector dxi (Ainv * (nabla_obs + lambda * nabla_smooth));
