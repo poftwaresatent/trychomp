@@ -52,12 +52,11 @@
 #include <sys/time.h>
 #include <err.h>
 
-typedef Eigen::VectorXd Vector;
-typedef Eigen::MatrixXd Matrix;
-typedef Eigen::Isometry3d Transform;
-
-using namespace std;
-
+namespace {
+  using Vector = Eigen::VectorXd;
+  using Matrix = Eigen::MatrixXd;
+  using Transform = Eigen::Isometry3d;
+}  // namespace
 
 //////////////////////////////////////////////////
 // trajectory etc
@@ -154,7 +153,7 @@ double const Robot::radius_ (0.5);
 
 Robot rstart;
 Robot rend;
-vector <Robot> robots;
+std::vector <Robot> robots;
 
 
 //////////////////////////////////////////////////
@@ -231,7 +230,7 @@ static void cb_run ()
 static void cb_jumble ()
 {
   for (size_t ii (0); ii < xidim; ++ii) {
-    xi[ii] = double (rand()) / (0.1 * numeric_limits<int>::max()) - 5.0;
+    xi[ii] = double (rand()) / (0.1 * std::numeric_limits<int>::max()) - 5.0;
   }
   update_robots();
 }

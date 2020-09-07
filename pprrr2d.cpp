@@ -56,11 +56,11 @@
 #include <sys/time.h>
 #include <err.h>
 
-typedef Eigen::VectorXd Vector;
-typedef Eigen::MatrixXd Matrix;
-typedef Eigen::Isometry3d Transform;
-
-using namespace std;
+namespace {
+  using Vector = Eigen::VectorXd;
+  using Matrix = Eigen::MatrixXd;
+  using Transform = Eigen::Isometry3d;
+}  // namespace
 
 
 //////////////////////////////////////////////////
@@ -271,7 +271,7 @@ double const Robot::len_c_ (0.3);
 
 Robot rstart;
 Robot rend;
-vector <Robot> robots;
+std::vector <Robot> robots;
 
 
 //////////////////////////////////////////////////
@@ -351,10 +351,10 @@ static void cb_jumble ()
 {
   for (size_t ii (0); ii < xidim; ++ii) {
     if (ii % 5 < 2) {
-      xi[ii] = double (rand()) / (0.1 * numeric_limits<int>::max()) - 5.0;
+      xi[ii] = double (rand()) / (0.1 * std::numeric_limits<int>::max()) - 5.0;
     }
     else {
-      xi[ii] = double (rand()) / (numeric_limits<int>::max() / 2.0 / M_PI) - M_PI;
+      xi[ii] = double (rand()) / (std::numeric_limits<int>::max() / 2.0 / M_PI) - M_PI;
     }
   }
   update_robots();
